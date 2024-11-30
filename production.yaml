@@ -1,0 +1,97 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    container_name: flask-todo-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      - FLASK_ENV=${FLASK_ENV}
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - DATABASE_URI=${DATABASE_URI}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - todo-network
+
+
+  nginx:
+    image: nginx:1.25
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend/build:/usr/share/nginx/html
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - todo-network
+
+  frontend:
+    build: ./frontend
+    container_name: react-todo-frontend
+    depends_on:
+      - backend
+    networks:
+      - todo-network
+
+  db:
+    image: postgres:15
+    container_name: todo-db
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    env_file:
+      - ./backend/.env
+    environment:
+      POSTGRES_USER: user
+      PGUSER: user
+      POSTGRES_PASSWORD: beeje123
+      POSTGRES_DB: beejee
+      DB_HOST: db
+      DB_PORT: 5432
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d beejee"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    networks:
+      - todo-network
+    platform: linux/arm64
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4:8.2
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@mail.ru"
+      PGADMIN_DEFAULT_PASSWORD: "i123456"
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    restart: unless-stopped
+    networks:
+      - todo-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+
+volumes:
+  db_data:
+  pgadmin-data:
+
+networks:
+  todo-network:
+    driver: bridge
