@@ -74,7 +74,7 @@ npm start
 
 ### Запустите докер композ:
 ```bash
-docker compose -f production.yaml up --build
+docker compose -f local.yaml up --build
 ```
 
 ### Проект будет доступен на портах, указанных в файле docker-compose.yml. По умолчанию это:
